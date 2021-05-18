@@ -1,0 +1,261 @@
+---
+title: "First steps with the mipplot package"
+author: "U-Tokyo mipplot team"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_document
+vignette: >
+  %\VignetteIndexEntry{First steps with the mipplot package}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Summary
+
+The `mipplot` package is an `R` package for visualizing data in the IAMC template format.
+
+This vignette introduces the basic features of the `mipplot` package.
+
+## Data
+
+This vignette uses a subset of the SR1.5 data.
+This data is included in the `mipplot` package and does not need to be downloaded separately.
+
+## load library
+
+Load the `mipplot` and `tidyverse` packages.
+
+```{r, message=FALSE, warning=FALSE}
+library(mipplot)
+library(tidyverse)
+```
+
+## load sample data
+
+The SR1.5 subset data that comes with the `mipplot` package can be accessed under the name `mipplot::sr15_sample_data`. Let's take a look at what's inside.
+
+```{r}
+sr15_sample_data
+```
+
+The data is in `tibble` format. It contains the following columns: `model`, `scenario`, `region`, `variable`, `unit`, `period`, and `value`.
+
+In addition, to read another data from a file, do the following.
+
+```{r, eval=FALSE}
+iamc_data <- mipplot_read_iamc("path_to_data.csv")
+```
+
+Check the list of models included in the data.
+
+```{r}
+sr15_sample_data$model %>% levels
+```
+
+Check the list of scenarios.
+
+```{r}
+sr15_sample_data$scenario %>% levels
+```
+
+Check the list of regions.
+
+```{r}
+sr15_sample_data$region %>% levels
+```
+
+Let's check the list of variables.
+
+```{r}
+sr15_sample_data %>% select(variable, unit) %>% distinct
+```
+
+## Data Filtering
+
+This section explains how to filter data, using the example of extracting only models that contain `SSP2` scenarios.
+
+```{r}
+sr15_sample_data %>% 
+  filter(str_detect(scenario, "^SSP2")) %>%
+  select(model, scenario) %>% distinct
+```
+
+The `"^SSP2"` given to the `str_detect` function is called a regular expression.
+The `"^"` stands for the beginning of a sentence, and the regular expression "^SSP2"" means to check if the string starts with "SSP2".
+
+`distinct` is a function that removes duplicate data.
+
+Next, let's extract the list of variables under **Secondary Energy|Electricity|**.
+
+"|" has a special meaning in regular expressions, so to search for it we must use something like "\\\|". This is called escaping.
+
+```{r}
+sr15_sample_data %>% 
+  filter(str_detect(variable, "^Secondary Energy\\|Electricity\\|")) %>% 
+  select(variable) %>%
+  distinct
+```
+
+## Visualization with interactive tool
+
+Let's use the interactive interface of `mipplot` to filter and visualize the data.
+
+### line plot
+
+The first step is to perform a line plot, which can be done as follows:
+
+```{r, eval=FALSE}
+mipplot_interactive_line(sr15_sample_data)
+```
+
+You will then see a screen like the one below.
+
+```{r, echo=FALSE, out.width="100%"}
+knitr::include_graphics("screenshot_mipplot_interactive_line.png")
+```
+
+Select the various conditions and plot the graph.
+
+The R code for reproducing the graph will be displayed on the screen.
+You can copy and paste it to edit the plot as shown below.
+
+```{r, fig.width=10, fig.height=7, out.width="100%"}
+data_subset <- sr15_sample_data %>%
+  filter( model %in% c("AIM/CGE 2.0", "GCAM 4.2", "IMAGE 3.0.1") ) %>%
+  filter(2000 <= period) %>%
+  filter(period <= 2100)
+
+mipplot_line(
+  data_subset,
+  variable = c("Emissions|CO2"),
+  scenario = c("SSP3-34", "SSP3-45", "SSP3-60", "SSP3-Baseline"),
+  region = c("World"),
+  legend = TRUE,
+  language = 'en')[[1]]
+
+```
+
+### bar plot
+
+Next, we will create a bar plot.
+Since bar plot needs a rule table, we will use the rule `ar5_db_sample_rule_table` for AR5.
+
+```{r, eval=FALSE}
+mipplot_interactive_bar(sr15_sample_data, ar5_db_sample_rule_table)
+```
+
+```{r, echo=FALSE, out.width="100%"}
+knitr::include_graphics("screenshot_mipplot_interactive_bar.png")
+```
+
+On the screen you will see the R code to reproduce the plot.
+Copy and paste this to edit the plot as shown below.
+
+```{r, fig.width=10, fig.height=7, out.width="100%"}
+data_subset <- sr15_sample_data %>%
+  filter(variable %in% c("Primary Energy", "Primary Energy|Coal", "Primary Energy|Gas", "Primary Energy|Oil", "Primary Energy|Nuclear", "Primary Energy|Hydro", "Primary Energy|Biomass", "Primary Energy|Solar", "Primary Energy|Wind", "Primary Energy|Geothermal", "Primary Energy|Ocean")) %>%
+  filter(model %in% c("AIM/CGE 2.0", "GCAM 4.2", "IMAGE 3.0.1")) %>%
+  filter(scenario %in% c("SSP3-34", "SSP3-45", "SSP3-60", "SSP3-Baseline"))
+
+mipplot_bar(data_subset, ar5_db_sample_rule_table,
+  region = c("World"),
+  target_year = 2050,
+  one_hundred_percent_stacked = FALSE,
+  language = 'en')[[1]]
+
+```
+
+
+### area plot
+
+Since area plot also requires a rule, we will use the rule `ar5_db_sample_rule_table` for AR5.
+
+```{r, eval=FALSE}
+mipplot_interactive_area(sr15_sample_data, ar5_db_sample_rule_table)
+```
+
+```{r, echo=FALSE, out.width="100%"}
+knitr::include_graphics("screenshot_mipplot_interactive_area.png")
+```
+
+On the screen you will see the R code to reproduce the plot.
+Copy and paste this to edit the plot as shown below.
+
+```{r, fig.width=10, fig.height=7, out.width="100%"}
+data_subset <- sr15_sample_data %>%
+  filter(variable %in% c("Secondary Energy|Electricity", "Secondary Energy|Electricity|Coal", "Secondary Energy|Electricity|Gas", "Secondary Energy|Electricity|Oil", "Secondary Energy|Electricity|Nuclear", "Secondary Energy|Electricity|Hydro", "Secondary Energy|Electricity|Biomass", "Secondary Energy|Electricity|Solar", "Secondary Energy|Electricity|Wind", "Secondary Energy|Electricity|Geothermal", "Secondary Energy|Electricity|Ocean")) %>%
+  filter(model %in% c("AIM/CGE 2.0", "GCAM 4.2", "IMAGE 3.0.1")) %>%
+  filter(2000 <= period) %>%
+  filter(period <= 2100)
+
+mipplot_area(data_subset, ar5_db_sample_rule_table,
+  region = c("World"),
+  scenario = c("SSP3-Baseline"),
+  one_hundred_percent_stacked = FALSE,
+  language = 'en')[[1]]
+```
+
+## Output in another language
+
+So far, we have plotted in English, but in addition to this, we can plot in Chinese (Simplified), Chinese (Traditional), Japanese, and Spanish.
+
+All plots so far have specified `language = "en"` (English), so replace this with, for example, the following:
+
+```{r, warning=FALSE, fig.width=10, fig.height=7, out.width="100%", eval=FALSE}
+data_subset <- sr15_sample_data %>%
+  filter(variable %in% c("Secondary Energy|Electricity", "Secondary Energy|Electricity|Coal", "Secondary Energy|Electricity|Gas", "Secondary Energy|Electricity|Oil", "Secondary Energy|Electricity|Nuclear", "Secondary Energy|Electricity|Hydro", "Secondary Energy|Electricity|Biomass", "Secondary Energy|Electricity|Solar", "Secondary Energy|Electricity|Wind", "Secondary Energy|Electricity|Geothermal", "Secondary Energy|Electricity|Ocean")) %>%
+  filter(model %in% c("AIM/CGE 2.0", "GCAM 4.2", "IMAGE 3.0.1")) %>%
+  filter(2000 <= period) %>%
+  filter(period <= 2100)
+
+mipplot_area(data_subset, ar5_db_sample_rule_table,
+  region = c("World"),
+  scenario = c("SSP3-Baseline"),
+  one_hundred_percent_stacked = FALSE,
+  language = 'jp')[[1]]  # <--------------- We changed here
+```
+
+
+The following table shows the languages and language codes that can be set.
+
+| language | language code |
+| ---- | ---- |
+| English | en |
+| Chinese (Simplified) | zh-cn |
+| Chinese (Traditional) | zh-tw |
+| Japanese | jp |
+| Spanish | es |
+
+
+## Output to PDF file
+
+To output an image to a PDF file, do the following:
+
+```{r, eval=FALSE, fig.width=10}
+data_subset <- sr15_sample_data %>%
+  filter(variable %in% c("Secondary Energy|Electricity", "Secondary Energy|Electricity|Coal", "Secondary Energy|Electricity|Gas", "Secondary Energy|Electricity|Oil", "Secondary Energy|Electricity|Nuclear", "Secondary Energy|Electricity|Hydro", "Secondary Energy|Electricity|Biomass", "Secondary Energy|Electricity|Solar", "Secondary Energy|Electricity|Wind", "Secondary Energy|Electricity|Geothermal", "Secondary Energy|Electricity|Ocean")) %>%
+  filter(model %in% c("AIM/CGE 2.0", "GCAM 4.2", "IMAGE 3.0.1")) %>%
+  filter(2000 <= period) %>%
+  filter(period <= 2100)
+
+# Save plot to `graph` variable
+graph <- mipplot_area(data_subset, ar5_db_sample_rule_table,
+  region = c("World"),
+  scenario = c("SSP3-Baseline"),
+  one_hundred_percent_stacked = FALSE,
+  language = 'zh-cn')[[1]]
+
+# Give `graph` to `mipplot_print_pdf`
+# mipplot_print_pdf(graph)
+
+```
+
+This will bring up a dialog box to save the file.
+You can save the file as a PDF file.
+
